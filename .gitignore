@@ -1,0 +1,9 @@
+*.tlog
+.vs
+*verlog.txt
+*.lastbuildstate
+*.cache
+*.map
+*.a
+*.o
+*.log
