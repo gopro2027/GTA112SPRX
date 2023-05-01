@@ -47,6 +47,7 @@ void drawMenuTitle(char *text) {
 
 void main_loop() {
 	outputTestGlobalVals();
+	spawnVehicleLoop();
 }
 
 void menu_open_loop() {
@@ -57,7 +58,8 @@ void draw_menu() {
 	main_loop();
 	if (menuOpen) {
 		exclusiveInputs();
-		if (IsTimerReady(20)) {
+		static int lastTick = 0;
+		if (IsTimerReady(20, &lastTick)) {
 			drawMenuTitle("~b~gopro_2027's Playground 1.12");
 			drawRectXY(0.1,0.2,0.3,0.5,0,255,255,70);
 			for (int i = 0; i < OPTION_OPTIONCOUNT; i++) {
@@ -75,7 +77,7 @@ void draw_menu() {
 					int hash = GAMEPLAY::GET_HASH_KEY("MP0_CHAR_XP_FM");
 					int prev = 0;
 					STATS::STAT_GET_INT(hash,&prev,1);
-					STATS::STAT_SET_INT(hash,prev+2000, 1);
+					STATS::STAT_SET_INT(hash,prev+10000, 1);
 				}
 				break;
 							}

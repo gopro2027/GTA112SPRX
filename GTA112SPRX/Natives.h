@@ -4191,7 +4191,7 @@ namespace NETWORK
 	static Any _0x4C2C6B6A(Any p0, Any p1, Any p2) { return invoke<Any>(0x4C2C6B6A, p0, p1, p2); } // 0x4C2C6B6A
 	static void _0x4818ACD0(Any p0, Any p1) { invoke<Void>(0x4818ACD0, p0, p1); } // 0x4818ACD0
 	static void NETWORK_SET_THIS_SCRIPT_IS_NETWORK_SCRIPT(Any p0, Any p1, Any p2) { invoke<Void>(0x470810ED, p0, p1, p2); } // 0x470810ED
-	static Any NETWORK_GET_THIS_SCRIPT_IS_NETWORK_SCRIPT() { return invoke<Any>(0xD9BF6549); } // 0xD9BF6549
+	static BOOL NETWORK_GET_THIS_SCRIPT_IS_NETWORK_SCRIPT() { return invoke<BOOL>(0xD9BF6549); } // 0xD9BF6549
 	static Any _0xCCD8C02D() { return invoke<Any>(0xCCD8C02D); } // 0xCCD8C02D
 	static Any _0x3E25A3C5() { return invoke<Any>(0x3E25A3C5); } // 0x3E25A3C5
 	static Any NETWORK_GET_SCRIPT_STATUS() { return invoke<Any>(0x2BE9235A); } // 0x2BE9235A

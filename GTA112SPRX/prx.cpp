@@ -1,5 +1,6 @@
 #include "stdafx.h"
 
+//ANY OTHER HARDCODED ADDRESSES ARE ON 1.12 BLES
 int G_NATIVES;
 int GLOBALS_PTR;
 int TOC;
@@ -90,9 +91,8 @@ __NO_INLINE uint64_t testHookEdat(uint64_t r3, uint64_t r4) {
 	return call<int>(edatFunctionCallAddress)(r3,r4,1,0,0);//0xA5D800
 }
 
-
-
 /*
+//now unused stat stuff. This kept causing issues for some reason so it's easier just to edit the file and point it to load from a nicer location than the rpf
 void statPatch(Stat *stat);
 void statPatches(uint64_t val) {
 	while (VALID_ADDR(val)) {
@@ -210,8 +210,7 @@ void init(uint64_t threadinfo) {
 	createFile("/dev_hdd0/tmp/debugfile.txt");
 	writeToFile("/dev_hdd0/tmp/debugfile.txt",str,strlen(str));
 
-
-	//Maybe try editing the stats config file to change all the mp stats to save locally? I know they have some sort of info in it, it's somewhere in the rpf
+	debug_append("Loading... if you do not see success after this line, then the sprx has crashed...\n");
 
 	//for disabling the business update so jobs work
 	PatchInJump(findEdatPatchPointer(), (int)testHookEdat, true);
@@ -223,9 +222,9 @@ void init(uint64_t threadinfo) {
 	//int *FuncBytes = getPatchInJump((int)statFileNameHook, true);
 	//write_process((void*)0x30B05C, FuncBytes, 4);
 	//write_process((void*)(0x30B05C+0x8), &FuncBytes[1], 4*3);
-	char *defaultstring = (char*)findDefaultXMLPointer();
-	printf("default string: 0x%X\n",defaultstring);
-	strcpy(defaultstring/*0x174C4B4*/,"/dev_hdd0/tmp/default");//"commoncrc:/data/default"
+
+	//UNCOMMENT THIS TO KEEP STATS LOADED! MAKE SURE TO HAVE THE 3 XML FILES IN THE PS3_DEBUG FOLDER IN YOUR PS3'S TMP FOLDER. CURRENTLY THIS WILL CAUSE ISSUES IF YOU SAVE YOUR GAME AND RELOAD IT, BUT THIS WILL ALLOW YOU TO EXIT TO SP AND GO BACK TO MP. WE NEED TO FIND OUT WHAT STUFF TO PATCH IN THE SCRIPT FILES TO MAKE THIS WORK AFTER A WHOLE GAME RELOAD! LOOK AT THE GLOBAL RESEARCH DONE IN GTACODE.H
+	//strcpy((char*)findDefaultXMLPointer()/*0x174C4B4*/,"/dev_hdd0/tmp/default");//"commoncrc:/data/default"  easier just to tell it to load the file from tmp
 
 
 	//some network stuff to force it to return that it is online in a lot of places
@@ -242,23 +241,11 @@ void init(uint64_t threadinfo) {
 	*(int*)0x3C1598 = 0x38600001;
 	*(int*)0x3C159C = 0x4E800020;
 
-	//r* policy bypass (sub_9668C(1) displays it)
-	//*(int*)0x96A6C = 0x38600000;//bypass check, this works but eh it's just the native so disable the native instead
-	//*(int*)0x14D2BD0 = 0x4E800020;//disable OPEN_ONLINE_POLICIES_MENU
-
-	//ARE_ONLINE_POLICIES_UP_TO_DATE native bypass
+	//ARE_ONLINE_POLICIES_UP_TO_DATE native bypass (skips policy signing)
 	*(int*)0x14D2C04 = 0x38600001;
 
-	//FORCE_CLOUD_MP_STATS_DOWNLOAD_AND_OVERWRITE_LOCAL_SAVE native disable
+	//FORCE_CLOUD_MP_STATS_DOWNLOAD_AND_OVERWRITE_LOCAL_SAVE native disable (this was a test 
 	*(int*)0x14fa670 = 0x4E800020;
-
-	/*
-	0x805d7cbb36fd6c4c,OPEN_ONLINE_POLICIES_MENU
-0xf13fe2a80c05c561,ARE_ONLINE_POLICIES_UP_TO_DATE
-0x6f72cd94f7b5b68c,IS_ONLINE_POLICIES_MENU_ACTIVE
-0x75d3691713c3b05a,OPEN_SOCIAL_CLUB_MENU
-0xd2b32be3fc1626c6,CLOSE_SOCIAL_CLUB_MENU
-	*/
 
 	//wait for natives table to be initialized
 	sleep(30000);
@@ -273,11 +260,8 @@ void init(uint64_t threadinfo) {
 	main_hook_original_opd = *(uint64_t*)MAIN_HOOK_ADDRESS;
 	*(uint64_t*)MAIN_HOOK_ADDRESS = *(uint64_t*)((int)main_hook);
 
-
-	//if (*(int*)0x0978308 == 0x7FE10808) {
-		//fix the trap for jobs? idfk someone sent this out and i mean it can't hurt it's a trap so it would freeze the game either way
-		//*(int*)0x0978308 = 0x60000000;
-	//}
+	//create other hooks
+	setup_textmessage_hook();
 
 
 	//debug info if setup was successful
