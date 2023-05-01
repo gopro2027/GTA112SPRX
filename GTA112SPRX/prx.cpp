@@ -46,51 +46,6 @@ void main_hook(int r3) {
 	draw_menu();
 }
 
-int findGlobalsPointer() {
-	//1.12 BLES sub_97CD7C
-	uint8_t *search = (uint8_t*)"\x3C\xA0\x01\xE7\x39\x00\x00\x00\x3C\x80\x01\xE7\x30\xA5\x03\x70\x61\x06\x00\x00\x30\x84\x04\x70";
-	uintptr_t addressptr = FindPattern(0x10200, 0x2269700, search, "xx??xxxxxx??xx??xxxxxx??");
-	unsigned int a = *(unsigned short*)(addressptr+2);//lis
-	short b = *(short*)(addressptr+0xE);//addic
-	return (a << 16) + b;
-}
-
-int findNativesPointer() {
-	//1.12 BLES sub_97C144
-	uint8_t *search = (uint8_t*)"\x3C\x60\x01\xDA\x3C\xC0\x01\xDB\x38\x80\x00\x00\x30\x63\x7B\xB0\x38\xA0\x01\x00\x98\x86\x82\x18\x7C\xA9\x03\xA6\x90\x83\x04\x00\x90\x83\x00\x00\x30\x63\x00\x04\x42\x00\xFF\xF8\x4E\x80\x00\x20";
-	uintptr_t addressptr = FindPattern(0x10200, 0x2269700, search, "xx??xx??xxxxxx??xxxx????xxxx????????xxxx????xxxx");
-	unsigned int a = *(unsigned short*)(addressptr+2);//lis
-	short b = *(short*)(addressptr+0xE);//addic
-	return (a << 16) + b;
-}
-
-int edatFunctionCallAddress;
-int findEdatPatchPointer() {
-	//1.12 BLES 0x353D04
-	uint8_t *search = (uint8_t*)"\x38\xA0\x01\x00\x00\x00\x00\x00\x80\x7F\x00\x04\x63\xA4\x00\x00\x38\xA0\x00\x01\x38\xC0\x00\x00\x38\xE0\x00\x00";
-	uintptr_t addressptr = FindPattern(0x10200, 0x2269700, search, "xxxx????xxxxxxxxxxxxxxxxxxxx");
-	edatFunctionCallAddress = addressptr+0x1C + ((*(int*)(addressptr+0x1C))&0xFFFFFF - 1);
-	return addressptr + 0x10;
-}
-
-int findDefaultXMLPointer() {
-	//1.12 BLES 0x174C4B4
-	uint8_t *search = (uint8_t*)				   "commoncrc:/data/default";
-	return FindPattern(0x10200, 0x2269700, search, "xxxxxxxxxxxxxxxxxxxxxxx");
-}
-
-
-__NO_INLINE uint64_t testHookEdat(uint64_t r3, uint64_t r4) {
-	printf("Edat file: %s\n",r4);
-	if (strstr((char*)r4, "mpBusiness") > (char*)0x10000) {
-		strcpy((char*)r4, "/dev_hdd0/tmp/b.edat");
-		//strcpy((char*)r4, "/dev_hdd0/game/BLES01807/USRDIR/dlc/dlc_mpHipser/DLC.edat");
-		printf("Overwriting business %s\n",r4);
-	}
-	
-	return call<int>(edatFunctionCallAddress)(r3,r4,1,0,0);//0xA5D800
-}
-
 /*
 //now unused stat stuff. This kept causing issues for some reason so it's easier just to edit the file and point it to load from a nicer location than the rpf
 void statPatch(Stat *stat);
@@ -201,7 +156,18 @@ void statPatch(Stat *stat) {
 			strcpy(online, "false");
 			printf("Set %s to offline\n",statname);
 		}
-}*/
+}
+
+void patchStatsHooking() {
+	//patch stats
+	//PatchInJump(0x30AB18, (int)statPatch, true);
+	//*(int*)0x30B05C = 0x7C451378;//mr %r5, %r2
+	//PatchInJump(0x30B064, (int)statFileNameHook, true);
+	//int *FuncBytes = getPatchInJump((int)statFileNameHook, true);
+	//write_process((void*)0x30B05C, FuncBytes, 4);
+	//write_process((void*)(0x30B05C+0x8), &FuncBytes[1], 4*3);
+}
+*/
 
 sys_ppu_thread_t ThreadModuleID;
 uint64_t main_hook_original_opd;
@@ -215,37 +181,11 @@ void init(uint64_t threadinfo) {
 	//for disabling the business update so jobs work
 	PatchInJump(findEdatPatchPointer(), (int)testHookEdat, true);
 
-	//patch stats
-	//PatchInJump(0x30AB18, (int)statPatch, true);
-	//*(int*)0x30B05C = 0x7C451378;//mr %r5, %r2
-	//PatchInJump(0x30B064, (int)statFileNameHook/*_intermediate*/, true);
-	//int *FuncBytes = getPatchInJump((int)statFileNameHook, true);
-	//write_process((void*)0x30B05C, FuncBytes, 4);
-	//write_process((void*)(0x30B05C+0x8), &FuncBytes[1], 4*3);
+	//patchStatsHooking();//this is outdated because it didn't work well for some reason so I gave up and used the code below instead because it's much simpler
 
 	//UNCOMMENT THIS TO KEEP STATS LOADED! MAKE SURE TO HAVE THE 3 XML FILES IN THE PS3_DEBUG FOLDER IN YOUR PS3'S TMP FOLDER. CURRENTLY THIS WILL CAUSE ISSUES IF YOU SAVE YOUR GAME AND RELOAD IT, BUT THIS WILL ALLOW YOU TO EXIT TO SP AND GO BACK TO MP. WE NEED TO FIND OUT WHAT STUFF TO PATCH IN THE SCRIPT FILES TO MAKE THIS WORK AFTER A WHOLE GAME RELOAD! LOOK AT THE GLOBAL RESEARCH DONE IN GTACODE.H
 	//strcpy((char*)findDefaultXMLPointer()/*0x174C4B4*/,"/dev_hdd0/tmp/default");//"commoncrc:/data/default"  easier just to tell it to load the file from tmp
 
-
-	//some network stuff to force it to return that it is online in a lot of places
-	//*(int*)0xCEED88 = 0x38600001;//li %r3, 1 getCloudAvailable1
-	//*(int*)0x125B7D0 =0x38600001;
-	//*(int*)0x125B6F8 =0x38600001;//125B6F8 Is_Rockstar_Services_Available
-	//*(int*)0x125B6FC =0x4E800020;
-
-	//NETWORK_IS_CLOUD_AVAILABLE native bypass... have to leave this in to get the temporary character creation
-	//*(int*)0x3C1968 = 0x38600001;
-	//*(int*)0x3C196C = 0x4E800020;
-
-	//DLC_CHECK_CLOUD_DATA_CORRECT native bypass
-	*(int*)0x3C1598 = 0x38600001;
-	*(int*)0x3C159C = 0x4E800020;
-
-	//ARE_ONLINE_POLICIES_UP_TO_DATE native bypass (skips policy signing)
-	*(int*)0x14D2C04 = 0x38600001;
-
-	//FORCE_CLOUD_MP_STATS_DOWNLOAD_AND_OVERWRITE_LOCAL_SAVE native disable (this was a test 
-	*(int*)0x14fa670 = 0x4E800020;
 
 	//wait for natives table to be initialized
 	sleep(30000);
@@ -260,8 +200,9 @@ void init(uint64_t threadinfo) {
 	main_hook_original_opd = *(uint64_t*)MAIN_HOOK_ADDRESS;
 	*(uint64_t*)MAIN_HOOK_ADDRESS = *(uint64_t*)((int)main_hook);
 
-	//create other hooks
-	setup_textmessage_hook();
+	//create other things
+	setup_textmessage_fix();
+	setup_stats_fix();
 
 
 	//debug info if setup was successful

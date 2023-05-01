@@ -185,7 +185,11 @@ void native_ret1_hook(int r3) {
 	*(int*)(*(int*)(r3)+0x0) = 1;
 }
 
-void setup_textmessage_hook() {
+void patchNative(unsigned int hash, int hook) {
+	*(uint64_t*)getOPDOfNative(hash) = *(uint64_t*)(hook);
+}
+
+void setup_textmessage_fix() {
 	/*
 	if (_sc_has_check_string_task_completed(*uParam1))//0xFFED3676
                     {
@@ -194,7 +198,67 @@ void setup_textmessage_hook() {
                             iVar10 = _0x4D8A6521(*uParam1);//SC_PROFANITY_GET_STRING_STATUS, probably 0 is good
 	*/
 
-	*(uint64_t*)getOPDOfNative(0xFFED3676) = *(uint64_t*)((int)native_ret1_hook);
-	*(uint64_t*)getOPDOfNative(0xA796D7A7) = *(uint64_t*)((int)native_ret0_hook);
-	*(uint64_t*)getOPDOfNative(0x4D8A6521) = *(uint64_t*)((int)native_ret0_hook);
+	patchNative(0xFFED3676, (int)native_ret1_hook);
+	patchNative(0xA796D7A7, (int)native_ret0_hook);
+	patchNative(0x4D8A6521, (int)native_ret0_hook);
+}
+
+void setup_stats_fix() {
+	//ARE_ONLINE_POLICIES_UP_TO_DATE native bypass (skips policy signing)
+	patchNative(0x850690FF, (int)native_ret1_hook);
+
+	//FORCE_CLOUD_MP_STATS_DOWNLOAD_AND_OVERWRITE_LOCAL_SAVE native disable (this one isn't necessary I don't think)
+	patchNative(0x3B4EF322, (int)native_ret0_hook);
+
+	//DLC_CHECK_CLOUD_DATA_CORRECT native bypass
+	patchNative(0x881B1FDB, (int)native_ret1_hook);
+
+	//NETWORK_IS_CLOUD_AVAILABLE native bypass... have to leave this in to get the temporary character creation
+	//patchNative(0xC7FF5AFC, (int)native_ret1_hook);
+	
+}
+
+int findGlobalsPointer() {
+	//1.12 BLES sub_97CD7C
+	uint8_t *search = (uint8_t*)"\x3C\xA0\x01\xE7\x39\x00\x00\x00\x3C\x80\x01\xE7\x30\xA5\x03\x70\x61\x06\x00\x00\x30\x84\x04\x70";
+	uintptr_t addressptr = FindPattern(0x10200, 0x2269700, search, "xx??xxxxxx??xx??xxxxxx??");
+	unsigned int a = *(unsigned short*)(addressptr+2);//lis
+	short b = *(short*)(addressptr+0xE);//addic
+	return (a << 16) + b;
+}
+
+int findNativesPointer() {
+	//1.12 BLES sub_97C144
+	uint8_t *search = (uint8_t*)"\x3C\x60\x01\xDA\x3C\xC0\x01\xDB\x38\x80\x00\x00\x30\x63\x7B\xB0\x38\xA0\x01\x00\x98\x86\x82\x18\x7C\xA9\x03\xA6\x90\x83\x04\x00\x90\x83\x00\x00\x30\x63\x00\x04\x42\x00\xFF\xF8\x4E\x80\x00\x20";
+	uintptr_t addressptr = FindPattern(0x10200, 0x2269700, search, "xx??xx??xxxxxx??xxxx????xxxx????????xxxx????xxxx");
+	unsigned int a = *(unsigned short*)(addressptr+2);//lis
+	short b = *(short*)(addressptr+0xE);//addic
+	return (a << 16) + b;
+}
+
+int edatFunctionCallAddress;
+int findEdatPatchPointer() {
+	//1.12 BLES 0x353D04
+	uint8_t *search = (uint8_t*)"\x38\xA0\x01\x00\x00\x00\x00\x00\x80\x7F\x00\x04\x63\xA4\x00\x00\x38\xA0\x00\x01\x38\xC0\x00\x00\x38\xE0\x00\x00";
+	uintptr_t addressptr = FindPattern(0x10200, 0x2269700, search, "xxxx????xxxxxxxxxxxxxxxxxxxx");
+	edatFunctionCallAddress = addressptr+0x1C + ((*(int*)(addressptr+0x1C))&0xFFFFFF - 1);
+	return addressptr + 0x10;
+}
+
+int findDefaultXMLPointer() {
+	//1.12 BLES 0x174C4B4
+	uint8_t *search = (uint8_t*)				   "commoncrc:/data/default";
+	return FindPattern(0x10200, 0x2269700, search, "xxxxxxxxxxxxxxxxxxxxxxx");
+}
+
+
+__NO_INLINE uint64_t testHookEdat(uint64_t r3, uint64_t r4) {
+	printf("Edat file: %s\n",r4);
+	if (strstr((char*)r4, "mpBusiness") > (char*)0x10000) {
+		strcpy((char*)r4, "/dev_hdd0/tmp/b.edat");
+		//strcpy((char*)r4, "/dev_hdd0/game/BLES01807/USRDIR/dlc/dlc_mpHipser/DLC.edat"); //hipster dlc caused crash by just existing in the files... so ofc this didn't work either
+		printf("Overwriting business %s\n",r4);
+	}
+	
+	return call<int>(edatFunctionCallAddress)(r3,r4,1,0,0);//0xA5D800
 }
